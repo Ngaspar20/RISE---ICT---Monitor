@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RISE ICT Monitor</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --rise-navy:    #1B3A6B;
+      --rise-teal:    #00A693;
+      --rise-light:   #F0F4F8;
+      --rise-white:   #FFFFFF;
+      --rise-text:    #1A202C;
+      --rise-muted:   #718096;
+      --status-green: #22C55E;
+      --status-yellow:#F59E0B;
+      --status-red:   #EF4444;
+      --status-green-bg: #F0FDF4;
+      --status-yellow-bg:#FFFBEB;
+      --status-red-bg:   #FEF2F2;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 14px;
+      background: var(--rise-light);
+      color: var(--rise-text);
+      margin: 0;
+    }
+
+    /* ── Sidebar ── */
+    #sidebar {
+      position: fixed; top: 0; left: 0; bottom: 0;
+      width: 220px; background: var(--rise-navy);
+      display: flex; flex-direction: column;
+      z-index: 100; transition: transform .25s;
+    }
+    #sidebar .logo {
+      padding: 20px 16px 12px;
+      color: #fff; font-weight: 700; font-size: 15px;
+      border-bottom: 1px solid rgba(255,255,255,.12);
+    }
+    #sidebar .logo span { color: var(--rise-teal); }
+    #sidebar nav { flex: 1; padding: 8px 0; overflow-y: auto; }
+    #sidebar nav a {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 16px; color: rgba(255,255,255,.75);
+      text-decoration: none; font-size: 13px; font-weight: 500;
+      border-left: 3px solid transparent; transition: all .15s;
+    }
+    #sidebar nav a:hover { color: #fff; background: rgba(255,255,255,.07); }
+    #sidebar nav a.active {
+      color: var(--rise-teal); border-left-color: var(--rise-teal);
+      background: rgba(0,166,147,.1);
+    }
+    #sidebar nav .section-label {
+      padding: 16px 16px 4px; color: rgba(255,255,255,.4);
+      font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em;
+    }
+    #sidebar .footer {
+      padding: 12px 16px; border-top: 1px solid rgba(255,255,255,.1);
+      color: rgba(255,255,255,.4); font-size: 11px;
+    }
+    #sidebar .footer a { color: rgba(255,255,255,.5); text-decoration: none; }
+    #sidebar .footer a:hover { color: var(--rise-teal); }
+
+    /* ── Main area ── */
+    #main {
+      margin-left: 220px; min-height: 100vh;
+      display: flex; flex-direction: column;
+    }
+
+    /* ── Top bar ── */
+    #topbar {
+      background: var(--rise-white);
+      border-bottom: 1px solid #E2E8F0;
+      padding: 0 24px; height: 56px;
+      display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 50;
+    }
+    #topbar .title { font-weight: 600; font-size: 15px; color: var(--rise-navy); }
+    #topbar .right { display: flex; align-items: center; gap: 16px; }
+    .sync-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      display: inline-block; margin-right: 4px;
+    }
+    .sync-dot.green { background: var(--status-green); }
+    .sync-dot.orange { background: var(--status-yellow); }
+    .sync-dot.red { background: var(--status-red); }
+    .sync-label { font-size: 12px; color: var(--rise-muted); }
+
+    /* ── Page content ── */
+    #content { flex: 1; padding: 24px; max-width: 1200px; width: 100%; }
+
+    /* ── Role selector (full screen) ── */
+    #role-selector {
+      position: fixed; inset: 0; z-index: 200;
+      background: var(--rise-navy);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 40px;
+    }
+    #role-selector .brand { text-align: center; color: #fff; }
+    #role-selector .brand h1 { font-size: 28px; font-weight: 700; margin: 0 0 4px; }
+    #role-selector .brand p { color: rgba(255,255,255,.6); font-size: 14px; margin: 0; }
+    #role-selector .roles {
+      display: flex; gap: 24px; flex-wrap: wrap; justify-content: center;
+    }
+    .role-btn {
+      width: 220px; padding: 28px 20px;
+      border-radius: 12px; border: 2px solid transparent;
+      cursor: pointer; text-align: center; transition: all .2s;
+      display: flex; flex-direction: column; align-items: center; gap: 12px;
+    }
+    .role-btn:hover { transform: translateY(-3px); box-shadow: 0 12px 32px rgba(0,0,0,.3); }
+    .role-btn.distrital  { background: var(--rise-teal); color: #fff; }
+    .role-btn.provincial { background: #fff; color: var(--rise-navy); }
+    .role-btn.nacional   { background: #2D3748; color: #fff; border-color: rgba(255,255,255,.2); }
+    .role-btn .icon { font-size: 36px; }
+    .role-btn .label { font-size: 16px; font-weight: 700; }
+    .role-btn .sublabel { font-size: 12px; opacity: .75; }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--rise-white);
+      border-radius: 10px; padding: 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,.07);
+      border: 1px solid #E2E8F0;
+    }
+    .card-title {
+      font-weight: 600; font-size: 13px;
+      color: var(--rise-navy); margin: 0 0 4px;
+    }
+
+    /* ── KPI cards ── */
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px,1fr)); gap: 16px; }
+    .kpi-card {
+      background: var(--rise-white); border-radius: 10px;
+      padding: 16px; border: 1px solid #E2E8F0;
+      box-shadow: 0 1px 3px rgba(0,0,0,.07);
+    }
+    .kpi-card .kpi-label { font-size: 11px; color: var(--rise-muted); font-weight: 500; text-transform: uppercase; letter-spacing: .05em; }
+    .kpi-card .kpi-value { font-size: 26px; font-weight: 700; color: var(--rise-navy); margin: 4px 0 0; }
+    .kpi-card .kpi-sub { font-size: 11px; color: var(--rise-muted); margin-top: 2px; }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 16px; border-radius: 6px; font-size: 13px;
+      font-weight: 500; cursor: pointer; border: none; transition: all .15s;
+    }
+    .btn-primary { background: var(--rise-teal); color: #fff; }
+    .btn-primary:hover { background: #009080; }
+    .btn-secondary { background: #EDF2F7; color: var(--rise-navy); }
+    .btn-secondary:hover { background: #E2E8F0; }
+    .btn-danger { background: #FEF2F2; color: var(--status-red); }
+    .btn-danger:hover { background: #FEE2E2; }
+    .btn-sm { padding: 5px 10px; font-size: 12px; }
+    .btn:disabled { opacity: .45; cursor: not-allowed; }
+
+    /* ── Forms ── */
+    .form-group { margin-bottom: 14px; }
+    .form-group label { display: block; font-size: 12px; font-weight: 600; color: var(--rise-navy); margin-bottom: 4px; }
+    .form-control {
+      width: 100%; padding: 8px 10px; border: 1px solid #CBD5E0;
+      border-radius: 6px; font-size: 13px; font-family: inherit;
+      color: var(--rise-text); background: #fff; transition: border .15s;
+      appearance: none;
+    }
+    .form-control:focus {
+      outline: none; border-color: var(--rise-teal);
+      box-shadow: 0 0 0 3px rgba(0,166,147,.12);
+    }
+
+    /* ── Tables ── */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    thead th {
+      text-align: left; font-size: 11px; font-weight: 600;
+      color: var(--rise-muted); text-transform: uppercase; letter-spacing: .05em;
+      padding: 8px 12px; border-bottom: 2px solid #E2E8F0; white-space: nowrap;
+    }
+    tbody tr { border-bottom: 1px solid #F7FAFC; transition: background .1s; }
+    tbody tr:hover { background: #F7FAFC; }
+    tbody td { padding: 10px 12px; font-size: 13px; vertical-align: middle; }
+
+    /* ── Status badges ── */
+    .badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 8px; border-radius: 20px; font-size: 11px; font-weight: 600;
+    }
+    .badge-green  { background: var(--status-green-bg);  color: #16A34A; }
+    .badge-yellow { background: var(--status-yellow-bg); color: #D97706; }
+    .badge-red    { background: var(--status-red-bg);    color: #DC2626; }
+    .badge-gray   { background: #F1F5F9;                 color: #64748B; }
+
+    /* ── Toggle ── */
+    .toggle-group {
+      display: inline-flex; border: 1px solid #CBD5E0;
+      border-radius: 6px; overflow: hidden;
+    }
+    .toggle-group button {
+      padding: 6px 14px; font-size: 12px; font-weight: 500;
+      background: #fff; color: var(--rise-muted); border: none;
+      cursor: pointer; transition: all .15s;
+    }
+    .toggle-group button.active { background: var(--rise-navy); color: #fff; }
+
+    /* ── Modal ── */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.45);
+      z-index: 300; display: flex; align-items: center; justify-content: center;
+      padding: 20px;
+    }
+    .modal {
+      background: #fff; border-radius: 12px; width: 100%; max-width: 540px;
+      max-height: 90vh; overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,.25);
+    }
+    .modal-header {
+      padding: 20px 24px 16px; border-bottom: 1px solid #E2E8F0;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .modal-header h3 { margin: 0; font-size: 16px; font-weight: 600; color: var(--rise-navy); }
+    .modal-body { padding: 20px 24px; }
+    .modal-footer {
+      padding: 16px 24px; border-top: 1px solid #E2E8F0;
+      display: flex; justify-content: flex-end; gap: 10px;
+    }
+    .close-btn {
+      background: none; border: none; cursor: pointer; font-size: 18px;
+      color: var(--rise-muted); line-height: 1;
+    }
+    .close-btn:hover { color: var(--rise-text); }
+
+    /* ── Page header ── */
+    .page-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 20px; flex-wrap: wrap; gap: 12px;
+    }
+    .page-header h2 { margin: 0; font-size: 18px; font-weight: 700; color: var(--rise-navy); }
+    .page-header p { margin: 2px 0 0; font-size: 13px; color: var(--rise-muted); }
+
+    /* ── Empty / Error states ── */
+    .empty-state { text-align: center; padding: 60px 20px; color: var(--rise-muted); }
+    .empty-state .icon { font-size: 40px; margin-bottom: 12px; }
+    .empty-state h3 { font-size: 15px; font-weight: 600; color: var(--rise-navy); margin: 0 0 6px; }
+    .empty-state p { font-size: 13px; margin: 0; }
+    .error-state { text-align: center; padding: 48px 24px; color: var(--rise-muted); }
+    .error-state .icon { font-size: 44px; margin-bottom: 12px; }
+    .error-state h3 { font-size: 15px; font-weight: 700; color: var(--rise-text); margin: 0 0 8px; }
+    .error-state p { font-size: 13px; margin: 0 0 16px; }
+
+    /* ── Alert banners ── */
+    .alert { border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; }
+    .alert-red    { background: var(--status-red-bg);    border: 1px solid #FECACA; color: #991B1B; }
+    .alert-yellow { background: var(--status-yellow-bg); border: 1px solid #FDE68A; color: #92400E; }
+    .alert-green  { background: var(--status-green-bg);  border: 1px solid #BBF7D0; color: #166534; }
+
+    /* ── Collapsible panel ── */
+    .collapsible-header { display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none; }
+    .collapsible-header:hover { opacity: .85; }
+    .collapsible-body { overflow: hidden; transition: max-height .25s ease; }
+    .collapsible-body.collapsed { max-height: 0 !important; }
+
+    /* ── Sync drawer ── */
+    #sync-drawer {
+      position: fixed; top: 56px; right: 0; width: 340px; max-height: calc(100vh - 56px);
+      overflow-y: auto; background: var(--rise-white);
+      border-left: 1px solid #E2E8F0; border-bottom: 1px solid #E2E8F0;
+      box-shadow: -4px 4px 20px rgba(0,0,0,.12);
+      z-index: 200; transform: translateX(100%); transition: transform .25s ease;
+    }
+    #sync-drawer.open { transform: translateX(0); }
+    #sync-drawer .drawer-header {
+      padding: 16px 20px; border-bottom: 1px solid #E2E8F0;
+      display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; background: var(--rise-white); z-index: 1;
+    }
+    #sync-drawer .drawer-header h4 { margin: 0; font-size: 14px; font-weight: 700; color: var(--rise-navy); }
+    #sync-overlay { position: fixed; inset: 0; z-index: 199; display: none; }
+    #sync-overlay.open { display: block; }
+
+    /* ── Topbar score pills ── */
+    .topbar-pills { display: flex; gap: 6px; align-items: center; }
+    .topbar-pill { font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 10px; }
+    .topbar-pill.green  { background: var(--status-green-bg);  color: #16A34A; }
+    .topbar-pill.yellow { background: var(--status-yellow-bg); color: #D97706; }
+    .topbar-pill.red    { background: var(--status-red-bg);    color: #DC2626; }
+
+    /* ── Online dot ── */
+    .online-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--status-green); display: inline-block; transition: background .3s; }
+    .online-dot.offline { background: var(--status-red); }
+
+    /* ── Loading skeleton ── */
+    .skeleton {
+      background: linear-gradient(90deg, #E2E8F0 25%, #F0F4F8 50%, #E2E8F0 75%);
+      background-size: 200% 100%; animation: shimmer 1.4s infinite; border-radius: 6px;
+    }
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+    /* ── Loading overlay ── */
+    #loading-overlay {
+      position: fixed; inset: 0; z-index: 500;
+      background: rgba(255,255,255,.75); backdrop-filter: blur(2px);
+      display: none; align-items: center; justify-content: center; flex-direction: column; gap: 12px;
+    }
+    #loading-overlay.show { display: flex; }
+    .loading-spinner {
+      width: 36px; height: 36px; border-radius: 50%;
+      border: 3px solid var(--rise-light); border-top-color: var(--rise-teal);
+      animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Misc utils ── */
+    .divider { border: none; border-top: 1px solid #E2E8F0; margin: 20px 0; }
+    .section-sep { margin: 24px 0; border: none; border-top: 2px solid var(--rise-light); }
+    .text-muted { color: var(--rise-muted); }
+    .text-danger { color: var(--status-red); }
+    .text-success { color: #16A34A; }
+    .font-semibold { font-weight: 600; }
+    .mt-1 { margin-top: 4px; }
+    .mt-2 { margin-top: 8px; }
+    .mt-3 { margin-top: 12px; }
+    .flex { display: flex; }
+    .items-center { align-items: center; }
+    .gap-2 { gap: 8px; }
+    .gap-3 { gap: 12px; }
+    .hidden { display: none !important; }
+
+    /* ── Mobile bottom tabs ── */
+    #mobile-tabs {
+      display: none; position: fixed; bottom: 0; left: 0; right: 0;
+      background: var(--rise-white); border-top: 1px solid #E2E8F0; z-index: 100;
+    }
+    #mobile-tabs .tabs-inner { display: flex; justify-content: space-around; }
+    #mobile-tabs a {
+      flex: 1; display: flex; flex-direction: column; align-items: center;
+      padding: 8px 4px; color: var(--rise-muted); text-decoration: none;
+      font-size: 10px; font-weight: 500; gap: 3px; transition: color .15s;
+    }
+    #mobile-tabs a.active { color: var(--rise-teal); }
+    #mobile-tabs a .tab-icon { font-size: 18px; }
+
+    /* ── Responsive ── */
+    @media (max-width: 767px) {
+      #sidebar { transform: translateX(-100%); }
+      #sidebar.open { transform: translateX(0); }
+      #main { margin-left: 0; padding-bottom: 60px; }
+      #mobile-tabs { display: block; }
+      #content { padding: 12px; }
+      .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+      [style*="grid-template-columns:1fr 1fr"],
+      [style*="grid-template-columns: 1fr 1fr"] { grid-template-columns: 1fr !important; }
+      #sync-drawer { width: 100%; top: 56px; }
+      .page-header { flex-direction: column; align-items: flex-start; gap: 10px; }
+      .page-header .btn { align-self: flex-start; }
+      #last-sync-label { display: none; }
+      .topbar-pills { gap: 4px; }
+      .topbar-pill { font-size: 10px; padding: 2px 5px; }
+      canvas { max-width: 100%; }
+      .toggle-group { flex-wrap: wrap; }
+    }
+
+    /* ── Print ── */
+    @media print {
+      #sidebar, #topbar, #mobile-tabs, #sync-drawer, #sync-overlay,
+      .btn, button, .filter-row, .page-header button,
+      #modal-container { display: none !important; }
+      #main { margin-left: 0 !important; }
+      #content { padding: 0 !important; max-width: 100% !important; }
+      body { background: #fff !important; font-size: 12px !important; }
+      .card { box-shadow: none !important; border: 1px solid #ddd !important; break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Loading overlay -->
+<div id="loading-overlay">
+  <div class="loading-spinner"></div>
+  <div id="loading-msg" style="font-size:13px;font-weight:600;color:var(--rise-muted)">A carregar…</div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     ROLE SELECTOR (first visit)
+════════════════════════════════════════════ -->
+<div id="role-selector" class="hidden">
+  <!-- Step 1: choose role -->
+  <div id="rs-step1">
+    <div class="brand">
+      <div style="font-size:40px;margin-bottom:12px">🩺</div>
+      <h1>RISE ICT Monitor</h1>
+      <p>Sistema de Monitorização de Testes Rápidos de VIH</p>
+      <p style="margin-top:4px;font-size:12px;color:rgba(255,255,255,.4)">JHPIEGO Mozambique · PEPFAR/USAID RISE · Manica &amp; Zambézia</p>
+    </div>
+    <div class="roles">
+      <button class="role-btn distrital" onclick="goToProvinceStep()">
+        <div class="icon">🏥</div>
+        <div class="label">Supervisor Distrital</div>
+        <div class="sublabel">Registo de dados &amp; gestão de conselheiros</div>
+      </button>
+      <button class="role-btn provincial" onclick="selectRole('provincial', null)">
+        <div class="icon">📊</div>
+        <div class="label">Supervisor Provincial</div>
+        <div class="sublabel">Dashboard provincial &amp; scorecard de fiabilidade</div>
+      </button>
+      <button class="role-btn nacional" onclick="selectRole('nacional', null)">
+        <div class="icon">🌍</div>
+        <div class="label">Assessor Técnico Nacional</div>
+        <div class="sublabel">Vista nacional agregada · Manica &amp; Zambézia</div>
+      </button>
+    </div>
+  </div>
+  <!-- Step 2: choose province (distrital only) -->
+  <div id="rs-step2" style="display:none;text-align:center">
+    <div class="brand">
+      <div style="font-size:32px;margin-bottom:12px">🗺️</div>
+      <h1 style="font-size:22px">Seleccionar Província</h1>
+      <p style="color:rgba(255,255,255,.6)">Em que província trabalha?</p>
+    </div>
+    <div class="roles">
+      <button class="role-btn" style="background:#1B6B5A;color:#fff;border:2px solid var(--rise-teal)" onclick="selectRole('distrital','Manica')">
+        <div class="icon">🟩</div>
+        <div class="label">Manica</div>
+        <div class="sublabel">Chimoio, Gondola, Manica, Sussundenga…</div>
+      </button>
+      <button class="role-btn" style="background:#1A3A6B;color:#fff;border:2px solid #4A7DD4" onclick="selectRole('distrital','Zambézia')">
+        <div class="icon">🟦</div>
+        <div class="label">Zambézia</div>
+        <div class="sublabel">Quelimane, Mocuba, Milange, Gurué…</div>
+      </button>
+    </div>
+    <button onclick="backToStep1()" style="background:none;border:none;color:rgba(255,255,255,.5);cursor:pointer;margin-top:16px;font-size:13px">← Voltar</button>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     SIDEBAR
+════════════════════════════════════════════ -->
+<div id="sidebar">
+  <div class="logo">RISE <span>ICT</span> Monitor</div>
+  <nav id="sidebar-nav"><!-- injected by renderNav() --></nav>
+  <div class="footer">
+    <div id="sidebar-version" style="font-size:10px;opacity:.5;margin-bottom:4px">v1.0.0</div>
+    <a href="#" onclick="resetRole()">Mudar perfil</a>
+    &nbsp;·&nbsp;
+    <a href="#" onclick="loadDemoData()" style="color:var(--rise-teal)">Demo</a>
+    &nbsp;·&nbsp;
+    <a href="#" onclick="clearDemoData()" style="color:#DC2626">Limpar</a>
+    <div id="sidebar-online" style="font-size:10px;margin-top:6px;opacity:.6">🟢 Online</div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     MAIN
+════════════════════════════════════════════ -->
+<div id="main">
+  <div id="topbar">
+    <div style="display:flex;align-items:center;gap:12px">
+      <button id="hamburger" style="display:none;background:none;border:none;cursor:pointer;font-size:20px;color:var(--rise-navy)" onclick="toggleSidebar()">☰</button>
+      <div class="title" id="topbar-title">Dashboard</div>
+    </div>
+    <div class="right">
+      <span id="online-indicator" title="Estado da ligação">
+        <span class="online-dot" id="online-dot"></span>
+      </span>
+      <span id="sync-status" onclick="openSyncDrawer()" style="cursor:pointer;display:flex;align-items:center;gap:4px">
+        <span class="sync-dot orange"></span>
+        <span class="sync-label">Pendente</span>
+      </span>
+      <span style="font-size:11px;color:var(--rise-muted)" id="last-sync-label">—</span>
+    </div>
+  </div>
+  <div id="content"><!-- injected by screen renderers --></div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     MOBILE BOTTOM TABS
+════════════════════════════════════════════ -->
+<div id="mobile-tabs">
+  <div class="tabs-inner" id="mobile-tabs-inner"><!-- injected --></div>
+</div>
+
+<!-- Modal container -->
+<div id="modal-container"></div>
+
+<!-- Sync drawer -->
+<div id="sync-overlay" onclick="closeSyncDrawer()"></div>
+<div id="sync-drawer">
+  <div class="drawer-header">
+    <h4>📡 Estado de Sincronização</h4>
+    <button class="close-btn" onclick="closeSyncDrawer()">✕</button>
+  </div>
+  <div id="sync-drawer-body" style="padding:16px 20px"></div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     JAVASCRIPT — load order matters
+════════════════════════════════════════════ -->
+<!-- Core -->
+<script src="js/config.js"></script>
+<script src="js/store.js"></script>
+<script src="js/utils.js"></script>
+<!-- Engine -->
+<script src="js/reliability.js"></script>
+<!-- Data sync -->
+<script src="js/sync.js"></script>
+<!-- App shell + navigation -->
+<script src="js/app.js"></script>
+<!-- Demo data seeder -->
+<script src="js/demo.js"></script>
+<!-- UI screens (depend on app.js globals) -->
+<script src="js/ui/conselheiros.js"></script>
+<script src="js/ui/registar.js"></script>
+<script src="js/ui/ficha.js"></script>
+<script src="js/ui/historico.js"></script>
+<script src="js/ui/exportar.js"></script>
+<script src="js/ui/dashboard.js"></script>
+<script src="js/ui/provincial.js"></script>
+<script src="js/ui/entregas.js"></script>
+
+</body>
+</html>
